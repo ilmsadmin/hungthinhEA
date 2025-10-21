@@ -26,18 +26,18 @@ input double Max_Trades=30;
 input double Max_Lot=2;
 
 input string _2_ = "================ TP settings ================";
-input double TP=1500;
-input double TP1=1500;
+input double TP_Input=1500;
+input double TP1_Input=1500;
 input bool   VTP=true;
-input double Tral_Start=0;
-input double Tral_Size=0;
+input double Tral_Start_Input=0;
+input double Tral_Size_Input=0;
 
 input string _3_            =  "================ He thong giam thieu rui ro ================";
 input bool   RRS            =  false;
 input int    RRS_nOrder         =  3;
-input double RRS_TP          =  300;
-input double RRS_Tral_Start  =  70;
-input double RRS_Tral_Size   =  40;
+input double RRS_TP_Input          =  300;
+input double RRS_Tral_Start_Input  =  70;
+input double RRS_Tral_Size_Input   =  40;
 input double RRS_Profit_Percent  =  40;
 
 input string _4_            =  "================ Buy settings ================";
@@ -71,6 +71,9 @@ input color  Buy_LOT_Trall_Color=Yellow;
 input color  Sell_LOT_Trall_Color=Magenta;
 input color  RRS_Color_Sell   =  Purple;
 input color  RRS_Color_Buy    =  OrangeRed;
+
+// Working variables (can be modified)
+double TP, TP1, Tral_Start, Tral_Size, RRS_TP, RRS_Tral_Start, RRS_Tral_Size;
 
 //+------------------------------------------------------------------+
 //| Global Variables                                                  |
@@ -116,6 +119,15 @@ int BuyObj[2], SellObj[2];
 //+------------------------------------------------------------------+
 int OnInit()
 {
+   // Copy input values to working variables
+   TP=TP_Input;
+   TP1=TP1_Input;
+   Tral_Start=Tral_Start_Input;
+   Tral_Size=Tral_Size_Input;
+   RRS_TP=RRS_TP_Input;
+   RRS_Tral_Start=RRS_Tral_Start_Input;
+   RRS_Tral_Size=RRS_Tral_Size_Input;
+
    if(RRS_Tral_Size>RRS_Tral_Start)
    {
       RRS_Tral_Size=RRS_Tral_Start;
@@ -253,7 +265,7 @@ void OnTick()
          profitBuys+=posInfo.Profit();
          lotsBuys+=posInfo.Volume();
          buys++;
-         if(firstBuyTime<0 || posInfo.Time()<firstBuyTime) firstBuyTime=posInfo.Time();
+         if(firstBuyTime<0 || posInfo.Time()<(datetime)firstBuyTime) firstBuyTime=posInfo.Time();
       }
       if(posInfo.PositionType()==POSITION_TYPE_SELL)
       {
@@ -262,7 +274,7 @@ void OnTick()
          profitSells+=posInfo.Profit();
          lotsSells+=posInfo.Volume();
          sells++;
-         if(firstSellTime<0 || posInfo.Time()<firstSellTime) firstSellTime=posInfo.Time();
+         if(firstSellTime<0 || posInfo.Time()<(datetime)firstSellTime) firstSellTime=posInfo.Time();
       }
 
       Orders[index][TotalOrders[index]][0]=posInfo.Ticket();
@@ -381,16 +393,22 @@ void OnTick()
    double buystep=Step_Buy*MathPow(Step_Coef_Buy, j);
    if(NO(Step_Coef_Buy)==0) buystep=ParseStepMass(TotalOrders[0], 0);
 
-   Buy=(((TotalOrders[0]==0 && NO(Close[2])>NO(Open[2]) && NO(Close[1])>NO(Open[1])) || TotalOrders[0]>0)
-        && (!ThereIsOrderOnThisBar(Time[0], POSITION_TYPE_BUY) && (lastPriceBuy-SymbolInfoDouble(Symbol(),SYMBOL_ASK)>=buystep*Point()*x || NO(lastPriceBuy)==0)));
+   double close2=iClose(Symbol(),PERIOD_CURRENT,2);
+   double open2=iOpen(Symbol(),PERIOD_CURRENT,2);
+   double close1=iClose(Symbol(),PERIOD_CURRENT,1);
+   double open1=iOpen(Symbol(),PERIOD_CURRENT,1);
+   datetime time0=iTime(Symbol(),PERIOD_CURRENT,0);
+
+   Buy=(((TotalOrders[0]==0 && NO(close2)>NO(open2) && NO(close1)>NO(open1)) || TotalOrders[0]>0)
+        && (!ThereIsOrderOnThisBar(time0, POSITION_TYPE_BUY) && (lastPriceBuy-SymbolInfoDouble(Symbol(),SYMBOL_ASK)>=buystep*Point()*x || NO(lastPriceBuy)==0)));
 
    j=TotalOrders[1]-Step_Coef_Start_Order_Sell+2;
    if(j<0) j=0;
    double sellstep=Step_Sell*MathPow(Step_Coef_Sell, j);
    if(NO(Step_Coef_Sell)==0) sellstep=ParseStepMass(TotalOrders[1], 1);
 
-   Sell=(((TotalOrders[1]==0 && NO(Close[2])<NO(Open[2]) && NO(Close[1])<NO(Open[1])) || TotalOrders[1]>0)
-        && (!ThereIsOrderOnThisBar(Time[0], POSITION_TYPE_SELL) && (SymbolInfoDouble(Symbol(),SYMBOL_BID)-lastPriceSell>=sellstep*Point()*x || NO(lastPriceSell)==0)));
+   Sell=(((TotalOrders[1]==0 && NO(close2)<NO(open2) && NO(close1)<NO(open1)) || TotalOrders[1]>0)
+        && (!ThereIsOrderOnThisBar(time0, POSITION_TYPE_SELL) && (SymbolInfoDouble(Symbol(),SYMBOL_BID)-lastPriceSell>=sellstep*Point()*x || NO(lastPriceSell)==0)));
 
    //==========================================Calculation and drawing of BE/TP
    SellsTP=0; BuysTP=0;
@@ -466,7 +484,9 @@ void OnTick()
    if(LOTSellsBE>0 && TotalOrders[1]>=RRS_nOrder && RRS) ObjectSetDouble(0, "_Benefit_LotTPSell", OBJPROP_PRICE, LOTSellsTP);
 
    //==========================================Info panel
-   double maxlot=AccountInfoDouble(ACCOUNT_FREEMARGIN)/SymbolInfoDouble(Symbol(), SYMBOL_MARGIN_REQUIREMENT);
+   double freeMgn=AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+   double marginReq=SymbolInfoDouble(Symbol(), SYMBOL_MARGIN_REQUIREMENT);
+   double maxlot=(marginReq>0)?freeMgn/marginReq:0;
 
    if(!IsTesting() || (IsTesting() && IsVisualMode()))
    {
@@ -480,26 +500,26 @@ void OnTick()
       ObjectSetString(0, "_Benefit_t1_Header", OBJPROP_TEXT, "BUY-SIDE");
 
       ObjectCreateEx("_Benefit_t1_1_1", Yt[0], Xt[0], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t1_1_1", OBJPROP_TEXT, "Ordinov: "+DoubleToStr(buys, 0));
+      ObjectSetString(0, "_Benefit_t1_1_1", OBJPROP_TEXT, "Orders: "+IntegerToString(buys));
 
       ObjectCreateEx("_Benefit_t1_1_2", Yt[0]+15, Xt[0], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t1_1_2", OBJPROP_TEXT, "Objemy: "+DoubleToStr(lotsBuys, 2));
+      ObjectSetString(0, "_Benefit_t1_1_2", OBJPROP_TEXT, "Volume: "+DoubleToString(lotsBuys, 2));
 
       ObjectCreateEx("_Benefit_t1_1_3", Yt[0]+30, Xt[0], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t1_1_3", OBJPROP_TEXT, "TP Level: "+DoubleToStr(BuysTP, (int)Digits()));
+      ObjectSetString(0, "_Benefit_t1_1_3", OBJPROP_TEXT, "TP Level: "+DoubleToString(BuysTP, (int)Digits()));
 
       ObjectCreateEx("_Benefit_t1_1_4", Yt[0]+45, Xt[0], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t1_1_4", OBJPROP_TEXT, "LTP Level: "+DoubleToStr(LOTBuysTP, (int)Digits()));
+      ObjectSetString(0, "_Benefit_t1_1_4", OBJPROP_TEXT, "LTP Level: "+DoubleToString(LOTBuysTP, (int)Digits()));
 
       ObjectCreateEx("_Benefit_t1_2_1", Yt[0], Xt[0]+160, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t1_2_1", OBJPROP_TEXT, "Profit: "+DoubleToStr(profitBuys, 2));
+      ObjectSetString(0, "_Benefit_t1_2_1", OBJPROP_TEXT, "Profit: "+DoubleToString(profitBuys, 2));
 
       ObjectCreateEx("_Benefit_t1_2_3", Yt[0]+15, Xt[0]+160, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t1_2_3", OBJPROP_TEXT, "BE Level: "+DoubleToStr(BuysBE, (int)Digits()));
+      ObjectSetString(0, "_Benefit_t1_2_3", OBJPROP_TEXT, "BE Level: "+DoubleToString(BuysBE, (int)Digits()));
 
       ObjectCreateEx("_Benefit_t1_2_4", Yt[0]+30, Xt[0]+160, OBJ_LABEL, 0);
       double lotProfit = (historyProfitBuys/(AccountInfoDouble(ACCOUNT_BALANCE)-historyProfitBuys)*100);
-      ObjectSetString(0, "_Benefit_t1_2_4", OBJPROP_TEXT, "Lot Profit: "+DoubleToStr(lotProfit, 2)+"%");
+      ObjectSetString(0, "_Benefit_t1_2_4", OBJPROP_TEXT, "Lot Profit: "+DoubleToString(lotProfit, 2)+"%");
 
       double w1;
       double loclot=0;
@@ -514,16 +534,16 @@ void OnTick()
          w1=Step_Buy*MathPow(Step_Coef_Buy, j);
          if(NO(Step_Coef_Buy)==0) w1=ParseStepMass(i+1, 0);
 
-         ObjectCreateEx("_Benefit_t1_3_"+DoubleToStr(i, 0), y+75, next, OBJ_LABEL, 0);
+         ObjectCreateEx("_Benefit_t1_3_"+IntegerToString(i), y+75, next, OBJ_LABEL, 0);
          col2=textColor;
          if(TotalOrders[0]>=i+1) col2=RoyalBlue;
          dTemp=GetLot(0, i+1);
          loclot+=dTemp;
 
-         ObjectSetString(0, "_Benefit_t1_3_"+DoubleToStr(i, 0), OBJPROP_TEXT, "|"+DoubleToStr(w1, 0));
+         ObjectSetString(0, "_Benefit_t1_3_"+IntegerToString(i), OBJPROP_TEXT, "|"+DoubleToString(w1, 0));
 
-         ObjectCreateEx("_Benefit_t1_3L_"+DoubleToStr(i, 0), y+90, next, OBJ_LABEL, 0);
-         ObjectSetString(0, "_Benefit_t1_3L_"+DoubleToStr(i, 0), OBJPROP_TEXT, "|"+DoubleToStr(dTemp, 2));
+         ObjectCreateEx("_Benefit_t1_3L_"+IntegerToString(i), y+90, next, OBJ_LABEL, 0);
+         ObjectSetString(0, "_Benefit_t1_3L_"+IntegerToString(i), OBJPROP_TEXT, "|"+DoubleToString(dTemp, 2));
 
          next+=27;
       }
@@ -541,26 +561,26 @@ void OnTick()
       ObjectSetString(0, "_Benefit_t2_Header", OBJPROP_TEXT, "SELL-SIDE");
 
       ObjectCreateEx("_Benefit_t2_1_1", Yt[1], Xt[1], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t2_1_1", OBJPROP_TEXT, "Ordinov: "+DoubleToStr(sells, 0));
+      ObjectSetString(0, "_Benefit_t2_1_1", OBJPROP_TEXT, "Orders: "+IntegerToString(sells));
 
       ObjectCreateEx("_Benefit_t2_1_2", Yt[1]+15, Xt[1], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t2_1_2", OBJPROP_TEXT, "Objemy: "+DoubleToStr(lotsSells, 2));
+      ObjectSetString(0, "_Benefit_t2_1_2", OBJPROP_TEXT, "Volume: "+DoubleToString(lotsSells, 2));
 
       ObjectCreateEx("_Benefit_t2_1_3", Yt[1]+30, Xt[1], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t2_1_3", OBJPROP_TEXT, "TP Level: "+DoubleToStr(SellsTP, (int)Digits()));
+      ObjectSetString(0, "_Benefit_t2_1_3", OBJPROP_TEXT, "TP Level: "+DoubleToString(SellsTP, (int)Digits()));
 
       ObjectCreateEx("_Benefit_t2_1_4", Yt[1]+45, Xt[1], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t2_1_4", OBJPROP_TEXT, "LTP Level: "+DoubleToStr(LOTSellsTP, (int)Digits()));
+      ObjectSetString(0, "_Benefit_t2_1_4", OBJPROP_TEXT, "LTP Level: "+DoubleToString(LOTSellsTP, (int)Digits()));
 
       ObjectCreateEx("_Benefit_t2_2_1", Yt[1], Xt[1]+160, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t2_2_1", OBJPROP_TEXT, "Profit: "+DoubleToStr(profitSells, 2));
+      ObjectSetString(0, "_Benefit_t2_2_1", OBJPROP_TEXT, "Profit: "+DoubleToString(profitSells, 2));
 
       ObjectCreateEx("_Benefit_t2_2_3", Yt[1]+15, Xt[1]+160, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t2_2_3", OBJPROP_TEXT, "BE Level: "+DoubleToStr(SellsBE, (int)Digits()));
+      ObjectSetString(0, "_Benefit_t2_2_3", OBJPROP_TEXT, "BE Level: "+DoubleToString(SellsBE, (int)Digits()));
 
       ObjectCreateEx("_Benefit_t2_2_4", Yt[1]+30, Xt[1]+160, OBJ_LABEL, 0);
-      double lotProfit = (historyProfitSells/(AccountInfoDouble(ACCOUNT_BALANCE)-historyProfitSells)*100);
-      ObjectSetString(0, "_Benefit_t2_2_4", OBJPROP_TEXT, "Lot Profit: "+DoubleToStr(lotProfit, 2)+"%");
+      lotProfit = (historyProfitSells/(AccountInfoDouble(ACCOUNT_BALANCE)-historyProfitSells)*100);
+      ObjectSetString(0, "_Benefit_t2_2_4", OBJPROP_TEXT, "Lot Profit: "+DoubleToString(lotProfit, 2)+"%");
 
       double w1;
       double loclot=0;
@@ -575,16 +595,16 @@ void OnTick()
          w1=Step_Sell*MathPow(Step_Coef_Sell, j);
          if(NO(Step_Coef_Sell)==0) w1=ParseStepMass(i+1, 1);
 
-         ObjectCreateEx("_Benefit_t2_3_"+DoubleToStr(i, 0), y+75, next, OBJ_LABEL, 0);
+         ObjectCreateEx("_Benefit_t2_3_"+IntegerToString(i), y+75, next, OBJ_LABEL, 0);
          col2=textColor;
          if(TotalOrders[1]>=i+1) col2=Tomato;
          dTemp=GetLot(1, i+1);
          loclot+=dTemp;
 
-         ObjectSetString(0, "_Benefit_t2_3_"+DoubleToStr(i, 0), OBJPROP_TEXT, "|"+DoubleToStr(w1, 0));
+         ObjectSetString(0, "_Benefit_t2_3_"+IntegerToString(i), OBJPROP_TEXT, "|"+DoubleToString(w1, 0));
 
-         ObjectCreateEx("_Benefit_t2_3L_"+DoubleToStr(i, 0), y+90, next, OBJ_LABEL, 0);
-         ObjectSetString(0, "_Benefit_t2_3L_"+DoubleToStr(i, 0), OBJPROP_TEXT, "|"+DoubleToStr(dTemp, 2));
+         ObjectCreateEx("_Benefit_t2_3L_"+IntegerToString(i), y+90, next, OBJ_LABEL, 0);
+         ObjectSetString(0, "_Benefit_t2_3L_"+IntegerToString(i), OBJPROP_TEXT, "|"+DoubleToString(dTemp, 2));
 
          next+=27;
       }
@@ -599,7 +619,7 @@ void OnTick()
       ObjectSetString(0, "_Benefit_t3_body", OBJPROP_TEXT, "ggg");
 
       ObjectCreateEx("_Benefit_t3_Header", Yt[2]-25, Xt[2]+0, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_Header", OBJPROP_TEXT, Symbol()+", M"+DoubleToStr(Period(), 0));
+      ObjectSetString(0, "_Benefit_t3_Header", OBJPROP_TEXT, Symbol()+", M"+IntegerToString(Period()));
 
       string sbase = ":...:...:...:...:";
       int lenbase = StringLen(sbase);
@@ -611,7 +631,7 @@ void OnTick()
       if (i>0) s_beg = StringSubstr(sbase,0,i);
       if (i<lenbase-1) s_end = StringSubstr(sbase,i+1,lenbase-i-1);
       if (pc>100) pc=100;
-      s_end = StringConcatenate(s_beg,"|",s_end," ",DoubleToStr(pc,0),"%");
+      s_end = StringConcatenate(s_beg,"|",s_end," ",IntegerToString((int)pc),"%");
 
       ObjectCreateEx("_Benefit_t3_BarTimer", Yt[2]-25, Xt[2]+160, OBJ_LABEL, 0);
       ObjectSetString(0, "_Benefit_t3_BarTimer", OBJPROP_TEXT, s_end);
@@ -628,46 +648,46 @@ void OnTick()
 
       ObjectCreateEx("_Benefit_t3_1_3", Yt[2]+30, Xt[2], OBJ_LABEL, 0);
       double spread = (SymbolInfoDouble(Symbol(),SYMBOL_ASK)-SymbolInfoDouble(Symbol(),SYMBOL_BID))/Point();
-      ObjectSetString(0, "_Benefit_t3_1_3", OBJPROP_TEXT, "Spread: "+DoubleToStr(spread, 0));
+      ObjectSetString(0, "_Benefit_t3_1_3", OBJPROP_TEXT, "Spread: "+DoubleToString(spread, 0));
 
       ObjectCreateEx("_Benefit_t3_1_4", Yt[2]+45, Xt[2], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_1_4", OBJPROP_TEXT, "Min Lot Buy: "+DoubleToStr(Min_Lot_Buy, 2));
+      ObjectSetString(0, "_Benefit_t3_1_4", OBJPROP_TEXT, "Min Lot Buy: "+DoubleToString(Min_Lot_Buy, 2));
 
       ObjectCreateEx("_Benefit_t3_1_5", Yt[2]+60, Xt[2], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_1_5", OBJPROP_TEXT, "Exp Buy: "+DoubleToStr(Lot_Exp_Buy, 2));
+      ObjectSetString(0, "_Benefit_t3_1_5", OBJPROP_TEXT, "Exp Buy: "+DoubleToString(Lot_Exp_Buy, 2));
 
       ObjectCreateEx("_Benefit_t3_1_6", Yt[2]+75, Xt[2], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_1_6", OBJPROP_TEXT, "Min Lot Sell: "+DoubleToStr(Min_Lot_Sell, 2));
+      ObjectSetString(0, "_Benefit_t3_1_6", OBJPROP_TEXT, "Min Lot Sell: "+DoubleToString(Min_Lot_Sell, 2));
 
       ObjectCreateEx("_Benefit_t3_1_7", Yt[2]+90, Xt[2], OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_1_7", OBJPROP_TEXT, "Exp Sell: "+DoubleToStr(Lot_Exp_Sell, 2));
+      ObjectSetString(0, "_Benefit_t3_1_7", OBJPROP_TEXT, "Exp Sell: "+DoubleToString(Lot_Exp_Sell, 2));
 
       ObjectCreateEx("_Benefit_t3_2_1", Yt[2], Xt[2]+160, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_2_1", OBJPROP_TEXT, "Balance: "+DoubleToStr(AccountInfoDouble(ACCOUNT_BALANCE), 2));
+      ObjectSetString(0, "_Benefit_t3_2_1", OBJPROP_TEXT, "Balance: "+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2));
 
       ObjectCreateEx("_Benefit_t3_2_2", Yt[2]+15, Xt[2]+160, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_2_2", OBJPROP_TEXT, "Equity: "+DoubleToStr(AccountInfoDouble(ACCOUNT_EQUITY), 2));
+      ObjectSetString(0, "_Benefit_t3_2_2", OBJPROP_TEXT, "Equity: "+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2));
 
       ObjectCreateEx("_Benefit_t3_2_3", Yt[2]+30, Xt[2]+160, OBJ_LABEL, 0);
       tStr="Drawdown: 0%";
       if(AccountInfoDouble(ACCOUNT_EQUITY)<AccountInfoDouble(ACCOUNT_BALANCE))
-         tStr="Drawdown: "+DoubleToStr((AccountInfoDouble(ACCOUNT_BALANCE)-AccountInfoDouble(ACCOUNT_EQUITY))*100/AccountInfoDouble(ACCOUNT_BALANCE), 2)+"%";
+         tStr="Drawdown: "+DoubleToString((AccountInfoDouble(ACCOUNT_BALANCE)-AccountInfoDouble(ACCOUNT_EQUITY))*100/AccountInfoDouble(ACCOUNT_BALANCE), 2)+"%";
       ObjectSetString(0, "_Benefit_t3_2_3", OBJPROP_TEXT, tStr);
 
       ObjectCreateEx("_Benefit_t3_2_4", Yt[2]+45, Xt[2]+160, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_2_4", OBJPROP_TEXT, "Profit Day: "+DoubleToStr(dayProfit, 2));
+      ObjectSetString(0, "_Benefit_t3_2_4", OBJPROP_TEXT, "Profit Day: "+DoubleToString(dayProfit, 2));
 
       ObjectCreateEx("_Benefit_t3_2_5", Yt[2]+60, Xt[2]+160, OBJ_LABEL, 0);
-      ObjectSetString(0, "_Benefit_t3_2_5", OBJPROP_TEXT, "Profit Week: "+DoubleToStr(weekProfit, 2));
+      ObjectSetString(0, "_Benefit_t3_2_5", OBJPROP_TEXT, "Profit Week: "+DoubleToString(weekProfit, 2));
 
       ObjectCreateEx("_Benefit_t3_2_6", Yt[2]+75, Xt[2]+160, OBJ_LABEL, 0);
       dTemp=GetStopLevel(lotsBuys-lotsSells);
-      ObjectSetString(0, "_Benefit_t3_2_6", OBJPROP_TEXT, "StopOut Level: "+DoubleToStr(dTemp, (int)Digits()));
+      ObjectSetString(0, "_Benefit_t3_2_6", OBJPROP_TEXT, "StopOut Level: "+DoubleToString(dTemp, (int)Digits()));
 
       ObjectCreateEx("_Benefit_t3_2_7", Yt[2]+90, Xt[2]+160, OBJ_LABEL, 0);
       tStr=" points up";
       if(dTemp<SymbolInfoDouble(Symbol(),SYMBOL_ASK)) tStr=" points down";
-      ObjectSetString(0, "_Benefit_t3_2_7", OBJPROP_TEXT, "Till StopOut "+DoubleToStr(MathAbs(dTemp-SymbolInfoDouble(Symbol(),SYMBOL_ASK))/Point(), 0)+tStr);
+      ObjectSetString(0, "_Benefit_t3_2_7", OBJPROP_TEXT, "Till StopOut "+DoubleToString(MathAbs(dTemp-SymbolInfoDouble(Symbol(),SYMBOL_ASK))/Point(), 0)+tStr);
    }
 
    //==========================================Trailing
