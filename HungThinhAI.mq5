@@ -102,7 +102,7 @@ bool ObjectCreateEx(string objname, int YOffset, int XOffset=0, int objType=OBJ_
    if(ObjectFind(0, objname)==-1)
    {
       needNUL=true;
-      ObjectCreate(0, objname, objType, 0, 0, 0);
+      ObjectCreate(0, objname, objType, 0, 0.0, 0.0);
    }
 
    ObjectSetInteger(0, objname, OBJPROP_YDISTANCE, YOffset);
@@ -110,6 +110,7 @@ bool ObjectCreateEx(string objname, int YOffset, int XOffset=0, int objType=OBJ_
    ObjectSetInteger(0, objname, OBJPROP_CORNER, corner);
    ObjectSetInteger(0, objname, OBJPROP_BACK, background);
    if(needNUL) ObjectSetString(0, objname, OBJPROP_TEXT, "");
+   return(true);
 }
 
 int BuyObj[2], SellObj[2];
@@ -277,7 +278,7 @@ void OnTick()
          if(firstSellTime<0 || posInfo.Time()<(datetime)firstSellTime) firstSellTime=posInfo.Time();
       }
 
-      Orders[index][TotalOrders[index]][0]=posInfo.Ticket();
+      Orders[index][TotalOrders[index]][0]=(double)posInfo.Ticket();
       Orders[index][TotalOrders[index]][1]=posInfo.PositionType();
       Orders[index][TotalOrders[index]][2]=posInfo.Volume();
       Orders[index][TotalOrders[index]][3]=posInfo.PriceOpen();
@@ -579,7 +580,7 @@ void OnTick()
       ObjectSetString(0, "_Benefit_t2_2_3", OBJPROP_TEXT, "BE Level: "+DoubleToString(SellsBE, (int)Digits()));
 
       ObjectCreateEx("_Benefit_t2_2_4", Yt[1]+30, Xt[1]+160, OBJ_LABEL, 0);
-      lotProfit = (historyProfitSells/(AccountInfoDouble(ACCOUNT_BALANCE)-historyProfitSells)*100);
+      double lotProfit = (historyProfitSells/(AccountInfoDouble(ACCOUNT_BALANCE)-historyProfitSells)*100);
       ObjectSetString(0, "_Benefit_t2_2_4", OBJPROP_TEXT, "Lot Profit: "+DoubleToString(lotProfit, 2)+"%");
 
       double w1;
@@ -885,7 +886,7 @@ double GetStopLevel(double dLots)
 {
    if(NO(dLots)==0.0) return(0);
 
-   double freemargin = AccountInfoDouble(ACCOUNT_FREEMARGIN);
+   double freemargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
    double tickvalue = SymbolInfoDouble(Symbol(), SYMBOL_TRADE_TICK_VALUE);
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    double stop_out = AccountInfoDouble(ACCOUNT_MARGIN_SO_LEVEL);
@@ -894,7 +895,7 @@ double GetStopLevel(double dLots)
    double dZF = equity / (tickvalue * dLots);
    double dDZ = dZF - dZM;
    double dSO = dZF - dDZ * stop_out / 100;
-   double UrSO;
+   double UrSO = 0.0;
 
    if (dLots > 0) UrSO = SymbolInfoDouble(Symbol(),SYMBOL_BID) - dSO * Point();
    if (dLots < 0) UrSO = SymbolInfoDouble(Symbol(),SYMBOL_ASK) - dSO * Point();
@@ -989,7 +990,7 @@ double ParseStepMass(int till, int type)
    {
       pos=StringFind(mass, ",", newPos);
       if(pos<0) break;
-      step=(int)StringToDouble(StringSubstr(mass, newPos, pos-newPos));
+      step=(int)StringToInteger(StringSubstr(mass, newPos, pos-newPos));
       newPos=pos+1;
    }
 
