@@ -163,52 +163,52 @@ int OnInit()
    ObjectSetString(0, "_Benefit_OpenSell", OBJPROP_TEXT, "6");
 
    // Create horizontal lines for TP and BE levels
-   ObjectCreate(0, "_Benefit_BuyBE", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_BuyBE", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_BuyBE", OBJPROP_COLOR, Buy_BE_Color);
    ObjectSetInteger(0, "_Benefit_BuyBE", OBJPROP_WIDTH, 1);
    ObjectSetInteger(0, "_Benefit_BuyBE", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_SellBE", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_SellBE", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_SellBE", OBJPROP_COLOR, Sell_BE_Color);
    ObjectSetInteger(0, "_Benefit_SellBE", OBJPROP_WIDTH, 1);
    ObjectSetInteger(0, "_Benefit_SellBE", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_LotTPBuy", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_LotTPBuy", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_LotTPBuy", OBJPROP_COLOR, RRS_Color_Buy);
    ObjectSetInteger(0, "_Benefit_LotTPBuy", OBJPROP_WIDTH, 2);
    ObjectSetInteger(0, "_Benefit_LotTPBuy", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_LotTPSell", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_LotTPSell", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_LotTPSell", OBJPROP_COLOR, RRS_Color_Sell);
    ObjectSetInteger(0, "_Benefit_LotTPSell", OBJPROP_WIDTH, 2);
    ObjectSetInteger(0, "_Benefit_LotTPSell", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_BuyTP", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_BuyTP", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_BuyTP", OBJPROP_COLOR, Buy_TP_Color);
    ObjectSetInteger(0, "_Benefit_BuyTP", OBJPROP_WIDTH, 2);
    ObjectSetInteger(0, "_Benefit_BuyTP", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_SellTP", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_SellTP", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_SellTP", OBJPROP_COLOR, Sell_TP_Color);
    ObjectSetInteger(0, "_Benefit_SellTP", OBJPROP_WIDTH, 2);
    ObjectSetInteger(0, "_Benefit_SellTP", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_SellTrall", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_SellTrall", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_SellTrall", OBJPROP_COLOR, Sell_Trall_Color);
    ObjectSetInteger(0, "_Benefit_SellTrall", OBJPROP_WIDTH, 1);
    ObjectSetInteger(0, "_Benefit_SellTrall", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_BuyTrall", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_BuyTrall", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_BuyTrall", OBJPROP_COLOR, Buy_Trall_Color);
    ObjectSetInteger(0, "_Benefit_BuyTrall", OBJPROP_WIDTH, 1);
    ObjectSetInteger(0, "_Benefit_BuyTrall", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_SellLOTTrall", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_SellLOTTrall", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_SellLOTTrall", OBJPROP_COLOR, Sell_LOT_Trall_Color);
    ObjectSetInteger(0, "_Benefit_SellLOTTrall", OBJPROP_WIDTH, 1);
    ObjectSetInteger(0, "_Benefit_SellLOTTrall", OBJPROP_BACK, 1);
 
-   ObjectCreate(0, "_Benefit_BuyLOTTrall", OBJ_HLINE, 0, 0, 0);
+   ObjectCreate(0, "_Benefit_BuyLOTTrall", OBJ_HLINE, 0, 0, 0.0);
    ObjectSetInteger(0, "_Benefit_BuyLOTTrall", OBJPROP_COLOR, Buy_LOT_Trall_Color);
    ObjectSetInteger(0, "_Benefit_BuyLOTTrall", OBJPROP_WIDTH, 1);
    ObjectSetInteger(0, "_Benefit_BuyLOTTrall", OBJPROP_BACK, 1);
@@ -237,7 +237,7 @@ void OnTick()
    double profitBuys=0, profitSells=0;
    int buys=0, sells=0;
    double lotsBuys=0, lotsSells=0;
-   datetime firstBuyTime=-1, firstSellTime=-1;
+   datetime firstBuyTime=0, firstSellTime=0;
 
    for(int p=PositionsTotal()-1;p>=0;p--)
    {
@@ -266,7 +266,7 @@ void OnTick()
          profitBuys+=posInfo.Profit();
          lotsBuys+=posInfo.Volume();
          buys++;
-         if(firstBuyTime<0 || posInfo.Time()<(datetime)firstBuyTime) firstBuyTime=posInfo.Time();
+         if(firstBuyTime==0 || posInfo.Time()<firstBuyTime) firstBuyTime=posInfo.Time();
       }
       if(posInfo.PositionType()==POSITION_TYPE_SELL)
       {
@@ -275,7 +275,7 @@ void OnTick()
          profitSells+=posInfo.Profit();
          lotsSells+=posInfo.Volume();
          sells++;
-         if(firstSellTime<0 || posInfo.Time()<(datetime)firstSellTime) firstSellTime=posInfo.Time();
+         if(firstSellTime==0 || posInfo.Time()<firstSellTime) firstSellTime=posInfo.Time();
       }
 
       Orders[index][TotalOrders[index]][0]=(double)posInfo.Ticket();
@@ -380,10 +380,10 @@ void OnTick()
       if((long)HistoryDealGetInteger(ticket, DEAL_TYPE)==DEAL_SELL && countSells)
          closeSells++;
 
-      if((long)HistoryDealGetInteger(ticket, DEAL_TYPE)==DEAL_BUY && dealTime>firstBuyTime && firstBuyTime>-1)
+      if((long)HistoryDealGetInteger(ticket, DEAL_TYPE)==DEAL_BUY && dealTime>firstBuyTime && firstBuyTime>0)
          historyProfitBuys=historyProfitBuys+dealProfit;
 
-      if((long)HistoryDealGetInteger(ticket, DEAL_TYPE)==DEAL_SELL && dealTime>firstSellTime && firstSellTime>-1)
+      if((long)HistoryDealGetInteger(ticket, DEAL_TYPE)==DEAL_SELL && dealTime>firstSellTime && firstSellTime>0)
          historyProfitSells=historyProfitSells+dealProfit;
    }
 
@@ -446,7 +446,7 @@ void OnTick()
    ObjectSetDouble(0, "_Benefit_SellBE", OBJPROP_PRICE, 0);
    if(TotalOrders[1]>0)
    {
-      for(cikl=(int)((highestSell-lowestSell)/Point());cikl>=0;cikl--)
+      for(int cikl=(int)((highestSell-lowestSell)/Point());cikl>=0;cikl--)
       {
          SellsBE=lowestSell+cikl*Point();
          TheSumm=0;
@@ -889,7 +889,7 @@ double GetStopLevel(double dLots)
    double freemargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
    double tickvalue = SymbolInfoDouble(Symbol(), SYMBOL_TRADE_TICK_VALUE);
    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
-   double stop_out = AccountInfoDouble(ACCOUNT_MARGIN_SO_LEVEL);
+   double stop_out = AccountInfoDouble(ACCOUNT_MARGIN_SO_SO);
 
    double dZM = freemargin / (tickvalue * dLots);
    double dZF = equity / (tickvalue * dLots);
