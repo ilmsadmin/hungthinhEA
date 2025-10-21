@@ -1,5 +1,5 @@
 #property copyright "Copyright 2025, Hung Thinh AI"
-#property version   "1.1"
+#property version   "1.2"
 #property strict
 
 #include <Trade\Trade.mqh>
